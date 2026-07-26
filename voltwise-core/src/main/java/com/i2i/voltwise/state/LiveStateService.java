@@ -1,4 +1,62 @@
 package com.i2i.voltwise.state;
-import com.i2i.voltwise.home.*; import com.i2i.voltwise.home.HomeDtos.*; import org.springframework.stereotype.Service; import java.util.*; import java.util.concurrent.ConcurrentHashMap; import java.util.concurrent.ConcurrentMap;
-/** Tek ücretsiz web instance için Ignite yerine bellek içi canlı durum deposu. */
-@Service public class LiveStateService { private final ConcurrentMap<UUID,LiveModels.HomeLive> states=new ConcurrentHashMap<>(); public void register(Home h){var s=new LiveModels.HomeLive();s.id=h.id;s.name=h.name;s.email=h.email;s.budgetLimit=h.budgetLimit.doubleValue();s.baseTariff=h.baseTariff.doubleValue();s.penaltyMultiplier=h.penaltyMultiplier.doubleValue();h.appliances.forEach(a->s.appliances.put(a.id,new LiveModels.ApplianceLive(a.id,a.name,a.safeWattLimit.doubleValue())));states.put(s.id,s);} public LiveModels.HomeLive get(UUID id){return states.get(id);} public void put(LiveModels.HomeLive s){states.put(s.id,s);} public List<HomeStatus> all(){return states.values().stream().map(this::toDto).toList();} public HomeStatus status(UUID id){var s=get(id);if(s==null)throw new NoSuchElementException("Ev bulunamadı");return toDto(s);} private HomeStatus toDto(LiveModels.HomeLive s){var devices=s.appliances.values().stream().map(a->new ApplianceStatus(a.id,a.name,a.watts,a.safeLimit,a.breachCount,a.anomalous)).toList();double pct=s.budgetLimit==0?0:s.cost/s.budgetLimit*100;return new HomeStatus(s.id,s.name,s.email,s.energyKwh,s.cost,s.budgetLimit,pct,s.penalty,pct>=80,devices);} }
+
+import com.i2i.voltwise.home.Appliance;
+import com.i2i.voltwise.home.Home;
+import com.i2i.voltwise.home.HomeDtos.ApplianceStatus;
+import com.i2i.voltwise.home.HomeDtos.HomeStatus;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+@Service
+public class LiveStateService {
+  private final ConcurrentMap<UUID, LiveModels.HomeLive> states = new ConcurrentHashMap<>();
+
+  public void register(Home home) {
+    var state = new LiveModels.HomeLive();
+    state.id = home.id;
+    state.name = home.name;
+    state.email = home.email;
+    state.budgetLimit = home.budgetLimit.doubleValue();
+    state.baseTariff = home.baseTariff.doubleValue();
+    state.penaltyMultiplier = home.penaltyMultiplier.doubleValue();
+    home.appliances.forEach(appliance -> state.appliances.put(appliance.id,
+        new LiveModels.ApplianceLive(appliance.id, appliance.name, appliance.safeWattLimit.doubleValue())));
+    states.put(state.id, state);
+  }
+
+  /** Adds only the new device and deliberately keeps current watt, kWh and cost values. */
+  public void addAppliance(Home home, Appliance appliance) {
+    var state = states.get(home.id);
+    if (state == null) {
+      register(home);
+      return;
+    }
+    state.appliances.putIfAbsent(appliance.id,
+        new LiveModels.ApplianceLive(appliance.id, appliance.name, appliance.safeWattLimit.doubleValue()));
+  }
+
+  public LiveModels.HomeLive get(UUID id) { return states.get(id); }
+  public void put(LiveModels.HomeLive state) { states.put(state.id, state); }
+  public List<HomeStatus> all() { return states.values().stream().map(this::toDto).toList(); }
+
+  public HomeStatus status(UUID id) {
+    var state = get(id);
+    if (state == null) throw new NoSuchElementException("Ev bulunamadi");
+    return toDto(state);
+  }
+
+  private HomeStatus toDto(LiveModels.HomeLive state) {
+    var devices = state.appliances.values().stream()
+        .map(device -> new ApplianceStatus(device.id, device.name, device.watts, device.safeLimit,
+            device.breachCount, device.anomalous))
+        .toList();
+    double percentage = state.budgetLimit == 0 ? 0 : state.cost / state.budgetLimit * 100;
+    return new HomeStatus(state.id, state.name, state.email, state.energyKwh, state.cost,
+        state.budgetLimit, percentage, state.penalty, percentage >= 80, devices);
+  }
+}

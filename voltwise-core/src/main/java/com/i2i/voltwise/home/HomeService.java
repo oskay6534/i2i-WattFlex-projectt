@@ -59,9 +59,10 @@ public class HomeService {
     public void addAppliance(UUID homeId, ApplianceRequest request) {
         Home home = homes.findById(homeId)
                 .orElseThrow(() -> new NoSuchElementException("Ev bulunamadi"));
-        home.appliances.add(new Appliance(UUID.randomUUID(), home, request.name(), request.safeWattLimit()));
+        Appliance appliance = new Appliance(UUID.randomUUID(), home, request.name(), request.safeWattLimit());
+        home.appliances.add(appliance);
         homes.save(home);
-        live.register(home);
+        live.addAppliance(home, appliance);
         publishRegistrationEvent(home);
     }
 
