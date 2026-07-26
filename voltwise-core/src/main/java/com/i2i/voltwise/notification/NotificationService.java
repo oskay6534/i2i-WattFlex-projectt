@@ -127,6 +127,25 @@ public class NotificationService {
               + live.name + " için tüketiminizi birlikte takip edebiliriz.";
     }
 
+    if (question.contains("ne yapiyorsun") || question.contains("ne yapiyon")) {
+      return "Şu anda " + live.name + " için cihaz tüketimlerini ve bütçe durumunu takip ediyorum. İstersen faturayı, bir cihazı veya tasarruf planını birlikte inceleyebiliriz.";
+    }
+
+    if (question.contains("kac esya") || question.contains("kac cihaz") || question.contains("cihaz say")) {
+      int deviceCount = live.appliances.size();
+      return live.name + " içinde şu an " + deviceCount + " cihaz takip ediyorum. En yüksek anlık tüketim "
+              + (highest == null ? "henüz ölçülemiyor." : highest.name + " cihazında.");
+    }
+
+    if (question.contains("tavsiye") || question.contains("oner")) {
+      String deviceName = highest == null ? "yüksek güçlü cihazları" : highest.name + " cihazını";
+      return "Kısa tavsiyem: " + deviceName + " mümkünse yoğun saatler dışında kullanın, bekleme modundaki cihazları kapatın ve klimayı 24°C civarında tutun. Bu alışkanlıklar toplam tüketimi düşürür.";
+    }
+
+    if (question.startsWith("of") || question.contains("moral")) {
+      return "Buradayım. İstersen tek tek cihazları karşılaştırıp en hızlı tasarruf edeceğin noktayı bulalım.";
+    }
+
     var askedDevice = findMentionedDevice(live, question);
     if (askedDevice != null) {
       String state = askedDevice.anomalous

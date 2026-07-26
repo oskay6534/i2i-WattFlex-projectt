@@ -36,8 +36,10 @@ public class LiveStateService {
       register(home);
       return;
     }
-    state.appliances.putIfAbsent(appliance.id,
-        new LiveModels.ApplianceLive(appliance.id, appliance.name, appliance.safeWattLimit.doubleValue()));
+    var newDevice = new LiveModels.ApplianceLive(appliance.id, appliance.name, appliance.safeWattLimit.doubleValue());
+    // Kafka devre dışı olduğunda da yeni cihaz eklenir eklenmez anlamlı bir anlık ölçüm görünsün.
+    newDevice.watts = Math.round(appliance.safeWattLimit.doubleValue() * 0.35d);
+    state.appliances.putIfAbsent(appliance.id, newDevice);
   }
 
   public LiveModels.HomeLive get(UUID id) { return states.get(id); }
