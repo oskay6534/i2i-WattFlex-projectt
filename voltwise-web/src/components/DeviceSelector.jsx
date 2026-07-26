@@ -76,7 +76,7 @@ const DeviceSelector = ({ onDeviceDataChange }) => {
         <div ref={dropdownRef} style={{ position: 'relative', width: '100%', maxWidth: '400px', marginBottom: '20px' }}>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>Cihaz Ekle</label>
+                <label style={{ fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>Cihaz Ekle</label>
                 <input
                     type="text"
                     value={searchTerm}
@@ -92,7 +92,7 @@ const DeviceSelector = ({ onDeviceDataChange }) => {
                     placeholder="Cihaz ara (örn: Laptop Adaptörü)..."
                     style={{
                         width: '100%', padding: '10px', boxSizing: 'border-box',
-                        borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px'
+                        borderRadius: '6px', border: '1px solid #ccc', fontSize: '16px', color: '#111827', backgroundColor: '#fff'
                     }}
                 />
             </div>
@@ -102,14 +102,14 @@ const DeviceSelector = ({ onDeviceDataChange }) => {
                     position: 'absolute', top: '70px', left: 0, right: 0,
                     background: '#fff', border: '1px solid #ccc', borderRadius: '6px',
                     zIndex: 100, listStyle: 'none', padding: 0, margin: 0,
-                    maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                    maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', color: '#111827'
                 }}>
                     {filteredDevices.length > 0 ? (
                         filteredDevices.map(device => (
                             <li
                                 key={device.id}
                                 onClick={() => handleDeviceSelect(device)}
-                                style={{ padding: '12px 10px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                                style={{ padding: '12px 10px', cursor: 'pointer', borderBottom: '1px solid #eee', color: '#111827', fontWeight: 600 }}
                                 onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
                                 onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
                             >

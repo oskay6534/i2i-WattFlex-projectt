@@ -14,6 +14,8 @@ spring:
       max-request-size: 10MB
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    listener:
+      auto-startup: ${KAFKA_ENABLED:true}
     consumer:
       group-id: voltwise-core
       auto-offset-reset: earliest
@@ -36,6 +38,7 @@ spring:
 voltwise:
   demo-data-enabled: ${DEMO_DATA_ENABLED:true}
   kafka:
+    enabled: ${KAFKA_ENABLED:true}
     telemetry-topic: voltwise.telemetry
     registration-topic: voltwise.registration
   sensor-enabled: ${DEMO_SENSOR_ENABLED:true}

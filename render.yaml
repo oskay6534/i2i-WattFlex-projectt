@@ -14,6 +14,7 @@ services:
       - {key: KAFKA_SECURITY_PROTOCOL, value: SASL_SSL}
       - {key: KAFKA_SASL_MECHANISM, value: PLAIN}
       - {key: KAFKA_SASL_JAAS_CONFIG, sync: false}
+      - {key: KAFKA_ENABLED, value: "false"}
       - {key: JPA_DDL_AUTO, value: update}
       - {key: DEMO_DATA_ENABLED, value: "true"}
       - {key: DEMO_SENSOR_ENABLED, value: "true"}
