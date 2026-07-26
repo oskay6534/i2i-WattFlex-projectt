@@ -5,16 +5,25 @@ import com.i2i.voltwise.audit.SnapshotRepository;
 import com.i2i.voltwise.home.HomeDtos.*;
 import com.i2i.voltwise.state.LiveStateService;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
-import java.util.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 public class HomeService {
+    private static final Logger log = LoggerFactory.getLogger(HomeService.class);
 
     private final HomeRepository homes;
     private final SnapshotRepository snapshots;
@@ -25,7 +34,8 @@ public class HomeService {
     @Value("${voltwise.kafka.registration-topic}")
     String registrationTopic;
 
-    public HomeService(HomeRepository homes, SnapshotRepository snapshots, LiveStateService live, KafkaTemplate<String, String> kafka, ObjectMapper json) {
+    public HomeService(HomeRepository homes, SnapshotRepository snapshots, LiveStateService live,
+                       KafkaTemplate<String, String> kafka, ObjectMapper json) {
         this.homes = homes;
         this.snapshots = snapshots;
         this.live = live;
@@ -34,57 +44,56 @@ public class HomeService {
     }
 
     @Transactional
-    public CreatedHome create(CreateHomeRequest r) {
-        var h = new Home(UUID.randomUUID(), r.name(), r.email(), r.budgetLimit(), r.baseTariff(), r.penaltyMultiplier());
-        r.appliances().forEach(a -> h.appliances.add(new Appliance(UUID.randomUUID(), h, a.name(), a.safeWattLimit())));
-        homes.save(h);
-        live.register(h);
-
-        publishRegistrationEvent(h);
-        return new CreatedHome(h.id, h.name);
+    public CreatedHome create(CreateHomeRequest request) {
+        var home = new Home(UUID.randomUUID(), request.name(), request.email(), request.budgetLimit(),
+                request.baseTariff(), request.penaltyMultiplier());
+        request.appliances().forEach(appliance -> home.appliances.add(
+                new Appliance(UUID.randomUUID(), home, appliance.name(), appliance.safeWattLimit())));
+        homes.save(home);
+        live.register(home);
+        publishRegistrationEvent(home);
+        return new CreatedHome(home.id, home.name);
     }
 
-    // YENİ EKLENEN METOD: Mevcut eve cihaz ekler
     @Transactional
-    public void addAppliance(UUID homeId, ApplianceRequest r) {
-        Home h = homes.findById(homeId).orElseThrow(() -> new NoSuchElementException("Ev bulunamadı"));
-
-        Appliance newAppliance = new Appliance(UUID.randomUUID(), h, r.name(), r.safeWattLimit());
-        h.appliances.add(newAppliance);
-        homes.save(h);
-
-        // Ignite cache'ini ve Kafka sensorlerini yeni cihazla güncelle
-        live.register(h);
-        publishRegistrationEvent(h);
+    public void addAppliance(UUID homeId, ApplianceRequest request) {
+        Home home = homes.findById(homeId)
+                .orElseThrow(() -> new NoSuchElementException("Ev bulunamadi"));
+        home.appliances.add(new Appliance(UUID.randomUUID(), home, request.name(), request.safeWattLimit()));
+        homes.save(home);
+        live.register(home);
+        publishRegistrationEvent(home);
     }
 
     public List<DailyTrend> history(UUID homeId, int days) {
-        if (!homes.existsById(homeId)) throw new NoSuchElementException("Ev bulunamadı");
-        return snapshots.findRecent(homeId, Instant.now().minus(Duration.ofDays(days)))
-                .stream()
-                .collect(Collectors.groupingBy(s -> s.capturedAt.atZone(ZoneOffset.UTC).toLocalDate(), TreeMap::new, Collectors.toList()))
+        if (!homes.existsById(homeId)) throw new NoSuchElementException("Ev bulunamadi");
+        return snapshots.findRecent(homeId, Instant.now().minus(Duration.ofDays(days))).stream()
+                .collect(Collectors.groupingBy(snapshot -> snapshot.capturedAt.atZone(ZoneOffset.UTC).toLocalDate(),
+                        TreeMap::new, Collectors.toList()))
                 .entrySet().stream()
-                .map(e -> new DailyTrend(
-                        e.getKey(),
-                        e.getValue().stream().mapToDouble(s -> s.energyKwh.doubleValue()).max().orElse(0),
-                        e.getValue().stream().mapToDouble(s -> s.cost.doubleValue()).max().orElse(0)
-                )).toList();
+                .map(entry -> new DailyTrend(entry.getKey(),
+                        entry.getValue().stream().mapToDouble(snapshot -> snapshot.energyKwh.doubleValue()).max().orElse(0),
+                        entry.getValue().stream().mapToDouble(snapshot -> snapshot.cost.doubleValue()).max().orElse(0)))
+                .toList();
     }
 
-    // Kafka gönderim işlemini kod tekrarını önlemek için ayrı bir metoda çıkardım
-    private void publishRegistrationEvent(Home h) {
+    private void publishRegistrationEvent(Home home) {
         try {
-            kafka.send(registrationTopic, h.id.toString(), json.writeValueAsString(Map.of(
-                    "homeId", h.id,
-                    "name", h.name,
-                    "appliances", h.appliances.stream().map(a -> Map.of(
-                            "id", a.id,
-                            "name", a.name,
-                            "safeWattLimit", a.safeWattLimit
+            kafka.send(registrationTopic, home.id.toString(), json.writeValueAsString(Map.of(
+                    "homeId", home.id,
+                    "name", home.name,
+                    "appliances", home.appliances.stream().map(appliance -> Map.of(
+                            "id", appliance.id,
+                            "name", appliance.name,
+                            "safeWattLimit", appliance.safeWattLimit
                     )).toList()
-            )));
-        } catch (Exception e) {
-            throw new IllegalStateException("Kayıt olayı yayınlanamadı", e);
+            ))).whenComplete((result, error) -> {
+                if (error != null) {
+                    log.warn("Kafka registration event failed; device remains saved: {}", error.getMessage());
+                }
+            });
+        } catch (Exception error) {
+            log.warn("Kafka registration event could not be prepared; device remains saved: {}", error.getMessage());
         }
     }
 }
