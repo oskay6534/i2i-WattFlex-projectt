@@ -117,6 +117,25 @@ public class NotificationService {
             .max((left, right) -> Double.compare(left.watts, right.watts)).orElse(null);
     String question = normalize(reason);
 
+    if (question.contains("sen kimsin") || question.contains("kimsin")) {
+      return "Ben WattFlex AI'yım. Akıllı evinizdeki cihaz tüketimlerini, bütçenizi ve tasarruf fırsatlarını takip etmenize yardımcı olurum.";
+    }
+
+    if (question.contains("nerelisin") || question.contains("nerede yasiyorsun")) {
+      return "Ben fiziksel bir yerde yaşamıyorum; WattFlex uygulamasındaki enerji verilerinizi analiz eden dijital enerji asistanıyım. "
+              + live.name + " için tüketiminizi birlikte takip edebiliriz.";
+    }
+
+    var askedDevice = findMentionedDevice(live, question);
+    if (askedDevice != null) {
+      String state = askedDevice.anomalous
+              ? " Bu değer güvenli limitin üzerinde olduğu için dikkat gerektiriyor."
+              : " Şu an güvenli çalışma aralığında.";
+      return askedDevice.name + " şu anda " + String.format("%.0f", askedDevice.watts)
+              + " W tüketiyor. Güvenli limiti " + String.format("%.0f", askedDevice.safeLimit)
+              + " W." + state + " İstersen çalışma süresi ve tasarruf önerisini de inceleyebilirim.";
+    }
+
     // Gemini geçici olarak cevap veremese bile, kullanıcının sorusuna canlı telemetriyle cevap ver.
     if (highest != null && (question.contains("en cok") || question.contains("en fazla")
             || question.contains("tuket") || question.contains("cihaz") || question.contains("elektr"))) {
@@ -158,6 +177,20 @@ public class NotificationService {
     return "WattFlex AI analizi: " + priority
             + " Tahmini yüzde 12 tasarruf için klimayı 24°C'de çalıştırın, çamaşır makinesini tam dolu kullanın "
             + "ve gece bekleme yüklerini kapatın. Sorunuz: " + reason;
+  }
+
+  private LiveModels.ApplianceLive findMentionedDevice(LiveModels.HomeLive live, String question) {
+    String alias = question.contains("buzdo") ? "buzdol"
+            : question.contains("camasir") ? "camasir"
+            : question.contains("bulasik") ? "bulasik"
+            : question.contains("klima") ? "klima"
+            : question.contains("televizyon") || question.contains("tv") ? "televizyon"
+            : "";
+    if (alias.isBlank()) return null;
+    return live.appliances.values().stream()
+            .filter(appliance -> normalize(appliance.name).contains(alias))
+            .findFirst()
+            .orElse(null);
   }
 
   private String normalize(String text) {
