@@ -67,8 +67,9 @@ public class NotificationService {
     String fallback = fallbackAdvice(live, reason);
     if (apiKey == null || apiKey.isBlank()) return fallback;
     try {
-      String prompt = "Sen WattFlex enerji danışmanısın. Yalnızca Türkçe cevap ver. "
-              + "Yanıtın kısa, kişisel, sayısal ve uygulanabilir olsun. Ev=" + live.name
+      String prompt = "Sen WattFlex AI'sın; Türkçe konuşan, doğal ve yardımsever bir sohbet asistanısın. "
+              + "Selamlaşma, kimlik ve gündelik sorulara normal chatbot gibi doğrudan cevap ver; bu sorularda enerji verisini zorla konuya katma. "
+              + "Enerji, fatura, cihaz veya tasarruf sorularında aşağıdaki canlı veriyi kullanarak kısa, kişisel, sayısal ve uygulanabilir cevap ver. Ev=" + live.name
               + ", enerji=" + String.format("%.2f", live.energyKwh) + " kWh"
               + ", maliyet=" + String.format("%.2f", live.cost) + " TL"
               + ", bütçe=" + String.format("%.2f", live.budgetLimit) + " TL"
@@ -85,7 +86,7 @@ public class NotificationService {
 
       Map<String, Object> body = Map.of(
               "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-              "generationConfig", Map.of("temperature", 0.35, "maxOutputTokens", 1024)
+              "generationConfig", Map.of("maxOutputTokens", 1024)
       );
       Map<?, ?> response = http.post()
               .uri("https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", model)
