@@ -189,10 +189,11 @@ function Metric({icon, label, value, trend, sub, good, warn}) {
 function HomeCard({home, onClick}) {
   const anomaly = home.appliances.some(a => a.anomalous);
   const danger = home.penalty || anomaly;
+  const liveWatts = home.appliances.reduce((sum, appliance) => sum + appliance.watts, 0);
   const status = home.penalty ? 'CEZA TARİFESİ' : anomaly ? 'ANOMALİ' : home.quotaWarning ? 'BÜTÇE UYARISI' : 'OPTİMAL';
   return <button className={`home-card ${danger ? 'danger' : home.quotaWarning ? 'warning' : ''}`} onClick={onClick}>
     <div className="home-top"><span className="home-symbol">⌂</span><span className="status-dot"><i/>{status}</span></div>
-    <h3>{home.name}</h3><p>{home.appliances.length} cihaz • Son veri şimdi</p>
+    <div className="home-name-row"><h3>{home.name}</h3><span className="live-power">⚡ {num(liveWatts / 1000, 2)} kW</span></div><p>{home.appliances.length} cihaz • Son veri şimdi</p>
     <div className="budget-row"><span>Bütçe kullanımı</span><b>%{num(home.budgetPercent, 0)}</b></div>
     <div className="budget-track"><i style={{width: `${clamp(home.budgetPercent, 2, 100)}%`}}/></div>
     <div className="home-metrics"><div><small>MALİYET</small><b>{money(home.cost)}</b></div><div><small>ENERJİ</small><b>{num(home.energyKwh)} kWh</b></div><span>→</span></div>
