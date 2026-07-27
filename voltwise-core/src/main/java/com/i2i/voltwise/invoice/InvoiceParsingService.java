@@ -155,6 +155,9 @@ public class InvoiceParsingService {
   }
 
   private InvoiceDtos.InvoiceParseResult fallback(String message) {
-    return new InvoiceDtos.InvoiceParseResult(false, null, true, "Bilinmiyor", message);
+    // Demo akışında fatura OCR/AI sağlayıcısı erişilemez olsa bile kayıt ekranı
+    // devam edebilsin. Kullanıcıya bir hata yerine düzenlenebilir örnek tarife sunulur.
+    return new InvoiceDtos.InvoiceParseResult(true, 2.98432, true, "Tek Kademeli",
+        "Fatura okunamadı; örnek birim fiyat uygulandı. İstersen değiştirebilirsin.");
   }
 }
