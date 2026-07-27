@@ -27,6 +27,8 @@ public class NotificationService {
 
   @Value("${voltwise.gemini-api-key:}") String apiKey;
   @Value("${voltwise.gemini-model}") String model;
+  @Value("${voltwise.groq-api-key:}") String groqApiKey;
+  @Value("${voltwise.groq-model}") String groqModel;
   @Value("${voltwise.alert-from}") String from;
 
   public NotificationService(RestClient http, JavaMailSender mail,
@@ -65,6 +67,7 @@ public class NotificationService {
 
   private String generate(LiveModels.HomeLive live, String reason, String evContext) {
     String fallback = fallbackAdvice(live, reason);
+    if (groqApiKey != null && !groqApiKey.isBlank()) return generateWithGroq(live, reason, evContext, fallback);
     if (apiKey == null || apiKey.isBlank()) return fallback;
     try {
       String prompt = "Sen WattFlex AI'sın; Türkçe konuşan, doğal ve yardımsever bir sohbet asistanısın. "
@@ -197,6 +200,30 @@ public class NotificationService {
     return "WattFlex AI analizi: " + priority
             + " Tahmini yüzde 12 tasarruf için klimayı 24°C'de çalıştırın, çamaşır makinesini tam dolu kullanın "
             + "ve gece bekleme yüklerini kapatın. Sorunuz: " + reason;
+  }
+
+  private String generateWithGroq(LiveModels.HomeLive live, String reason, String evContext, String fallback) {
+    try {
+      String system = "Sen WattFlex AI'sın. Türkçe konuşan doğal ve yardımsever bir sohbet asistanısın. "
+              + "Gündelik sorulara normal chatbot gibi cevap ver. Enerji, fatura veya cihaz sorularında canlı veriyi kullan. "
+              + "Ev=" + live.name + ", enerji=" + String.format("%.2f", live.energyKwh) + " kWh"
+              + ", maliyet=" + String.format("%.2f", live.cost) + " TL, bütçe=" + String.format("%.2f", live.budgetLimit) + " TL.";
+      if (evContext != null && !evContext.isBlank()) system += " Ek bağlam: " + evContext;
+      Map<String, Object> body = Map.of("model", groqModel,
+              "messages", List.of(Map.of("role", "system", "content", system), Map.of("role", "user", "content", reason)),
+              "temperature", 0.5, "max_completion_tokens", 700);
+      Map<?, ?> response = http.post().uri("https://api.groq.com/openai/v1/chat/completions")
+              .header("Authorization", "Bearer " + groqApiKey).body(body).retrieve().body(Map.class);
+      Object choicesValue = response == null ? null : response.get("choices");
+      if (!(choicesValue instanceof List<?> choices) || choices.isEmpty()) return fallback;
+      if (!(choices.get(0) instanceof Map<?, ?> choice)) return fallback;
+      if (!(choice.get("message") instanceof Map<?, ?> message)) return fallback;
+      String answer = Objects.toString(message.get("content"), "").trim();
+      return answer.isBlank() ? fallback : answer;
+    } catch (Exception error) {
+      log.warn("Groq request failed for model {}: {}", groqModel, error.getMessage());
+      return fallback;
+    }
   }
 
   private LiveModels.ApplianceLive findMentionedDevice(LiveModels.HomeLive live, String question) {

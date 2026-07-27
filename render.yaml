@@ -21,4 +21,6 @@ services:
       - {key: SENSOR_INTERVAL_MS, value: "3000"}
       - {key: GEMINI_API_KEY, sync: false}
       - {key: GEMINI_MODEL, value: gemini-3.5-flash}
+      - {key: GROQ_API_KEY, sync: false}
+      - {key: GROQ_MODEL, value: llama-3.3-70b-versatile}
       - {key: CORS_ALLOWED_ORIGINS, value: "https://*.vercel.app"}
