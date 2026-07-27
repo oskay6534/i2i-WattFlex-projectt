@@ -614,6 +614,8 @@ function BillUpload({theme, cycleTheme, onDone}) {
 
   async function useDemoInvoice() {
     setError('');
+    analyze(null, '/fatura.jpg', 'fatura.jpg');
+    return;
     try {
       const response = await fetch('/fatura.jpg');
       const blob = await response.blob();
@@ -629,7 +631,7 @@ function BillUpload({theme, cycleTheme, onDone}) {
     setFile({url: previewUrl, name});
     setResult(null);
     setStatus('analyzing');
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 5000));
     setResult({
       recognized: true,
       unitPrice: 2.98432,
