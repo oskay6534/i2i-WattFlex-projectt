@@ -11,7 +11,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Extracts the unit price and tariff type from an uploaded electricity bill image. */
 @Service
@@ -42,16 +48,22 @@ public class InvoiceParsingService {
 
   public InvoiceDtos.InvoiceParseResult parse(MultipartFile file) {
     try {
-      String base64 = Base64.getEncoder().encodeToString(file.getBytes());
+      byte[] imageBytes = file.getBytes();
+      String base64 = Base64.getEncoder().encodeToString(imageBytes);
       String mime = "image/png".equals(file.getContentType()) ? "image/png" : "image/jpeg";
 
-      if (groqApiKey != null && !groqApiKey.isBlank()) {
-        return parseModelResponse(requestGroq(base64, mime));
+      try {
+        if (groqApiKey != null && !groqApiKey.isBlank()) {
+          return parseModelResponse(requestGroq(base64, mime));
+        }
+        if (geminiApiKey != null && !geminiApiKey.isBlank()) {
+          return parseModelResponse(requestGemini(base64, mime));
+        }
+      } catch (Exception providerError) {
+        log.warn("AI invoice parse failed; trying local OCR: {}", providerError.getMessage());
       }
-      if (geminiApiKey != null && !geminiApiKey.isBlank()) {
-        return parseModelResponse(requestGemini(base64, mime));
-      }
-      return fallback("Fatura okuma için AI anahtarı bulunamadı; birim fiyatı elle girebilirsin.");
+
+      return parseWithLocalOcr(imageBytes, mime);
     } catch (Exception error) {
       log.warn("Invoice parse failed: {}", error.getMessage());
       return fallback("Fatura okunurken bir sorun oluştu; görseli netleştirip yeniden dene.");
@@ -111,6 +123,35 @@ public class InvoiceParsingService {
           "Faturadaki birim fiyat okunamadı; elle girebilirsin.");
     }
     return new InvoiceDtos.InvoiceParseResult(true, unitPrice, singleTier, tariffLabel, "Fatura başarıyla okundu.");
+  }
+
+  private InvoiceDtos.InvoiceParseResult parseWithLocalOcr(byte[] imageBytes, String mime) throws Exception {
+    String suffix = "image/png".equals(mime) ? ".png" : ".jpg";
+    Path image = Files.createTempFile("wattflex-invoice-", suffix);
+    try {
+      Files.write(image, imageBytes);
+      Process process = new ProcessBuilder("tesseract", image.toString(), "stdout", "-l", "eng", "--psm", "6")
+          .redirectErrorStream(true)
+          .start();
+      String ocrText = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+      if (!process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS) || process.exitValue() != 0) {
+        return fallback("Fatura okunamadı; birim fiyatı elle girebilirsin.");
+      }
+
+      Matcher price = Pattern.compile("(?is)enerji\\s*(?:t[üu]k|tuk)[\\s\\S]{0,180}?(\\d+[,.]\\d{4,6})")
+          .matcher(ocrText);
+      if (!price.find()) {
+        return fallback("Faturadaki birim fiyat okunamadı; elle girebilirsin.");
+      }
+      double unitPrice = Double.parseDouble(price.group(1).replace(',', '.'));
+      String lower = ocrText.toLowerCase(Locale.forLanguageTag("tr"));
+      boolean singleTier = !(lower.contains("gündüz") && lower.contains("puant") && lower.contains("gece"));
+      String label = singleTier ? "Tek Kademeli" : "Çok Zamanlı (Gündüz/Puant/Gece)";
+      return new InvoiceDtos.InvoiceParseResult(true, unitPrice, singleTier, label,
+          "Fatura yerel olarak okundu.");
+    } finally {
+      Files.deleteIfExists(image);
+    }
   }
 
   private InvoiceDtos.InvoiceParseResult fallback(String message) {
