@@ -44,7 +44,7 @@ voltwise:
   sensor-enabled: ${DEMO_SENSOR_ENABLED:true}
   sensor-interval-ms: ${SENSOR_INTERVAL_MS:3000}
   gemini-api-key: ${GEMINI_API_KEY:}
-  gemini-model: ${GEMINI_MODEL:gemini-3.6-flash}
+  gemini-model: ${GEMINI_MODEL:gemini-3.5-flash}
   alert-from: ${ALERT_FROM:alerts@voltwise.local}
   cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://*.vercel.app}
 springdoc.swagger-ui.path: /swagger-ui.html
