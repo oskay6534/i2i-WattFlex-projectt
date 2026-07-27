@@ -7,7 +7,7 @@ import {
 import './styles.css';
 import DeviceSelector from './components/DeviceSelector';
 
-const API = import.meta.env.VITE_API_URL || '/api';
+const API = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://wattflex-core-im4x.onrender.com/api';
 const money = n => new Intl.NumberFormat('tr-TR', {style: 'currency', currency: 'TRY'}).format(n || 0);
 const num = (n, d = 1) => Number(n || 0).toFixed(d);
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
