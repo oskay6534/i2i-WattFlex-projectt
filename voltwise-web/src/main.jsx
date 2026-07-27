@@ -629,7 +629,7 @@ function BillUpload({theme, cycleTheme, onDone}) {
     setFile({url: previewUrl, name});
     setResult(null);
     setStatus('analyzing');
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setResult({
       recognized: true,
       unitPrice: 2.98432,
