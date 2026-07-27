@@ -44,6 +44,7 @@ public class LiveStateService {
   }
 
   public LiveModels.HomeLive get(UUID id) { return states.get(id); }
+  public void remove(UUID id) { states.remove(id); }
   public Collection<LiveModels.HomeLive> liveStates() { return states.values(); }
   public void put(LiveModels.HomeLive state) { states.put(state.id, state); }
   public List<HomeStatus> all() { return states.values().stream().map(this::toDto).toList(); }

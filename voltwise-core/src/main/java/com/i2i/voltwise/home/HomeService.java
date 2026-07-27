@@ -66,6 +66,14 @@ public class HomeService {
         publishRegistrationEvent(home);
     }
 
+    @Transactional
+    public void delete(UUID homeId) {
+        if (!homes.existsById(homeId)) throw new NoSuchElementException("Ev bulunamadi");
+        snapshots.deleteAllByHomeId(homeId);
+        live.remove(homeId);
+        homes.deleteById(homeId);
+    }
+
     public List<DailyTrend> history(UUID homeId, int days) {
         if (!homes.existsById(homeId)) throw new NoSuchElementException("Ev bulunamadi");
         return snapshots.findRecent(homeId, Instant.now().minus(Duration.ofDays(days))).stream()

@@ -46,4 +46,10 @@ public class HomeController {
         service.addAppliance(id, request);
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
 }
