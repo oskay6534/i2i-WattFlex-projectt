@@ -7,13 +7,11 @@ services:
     dockerfilePath: ./voltwise-core/Dockerfile
     autoDeployTrigger: commit
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: wattflex-db
-          property: connectionString
-      - {key: DB_URL, sync: false}
-      - {key: DB_USER, sync: false}
-      - {key: DB_PASSWORD, sync: false}
+      # The workspace already uses its single free Postgres slot. Keep the
+      # demo dashboard available with an isolated in-memory store for now.
+      - {key: DB_URL, value: "jdbc:h2:mem:wattflex;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE"}
+      - {key: DB_USER, value: sa}
+      - {key: DB_PASSWORD, value: ""}
       - {key: KAFKA_BOOTSTRAP_SERVERS, sync: false}
       - {key: KAFKA_SECURITY_PROTOCOL, value: SASL_SSL}
       - {key: KAFKA_SASL_MECHANISM, value: PLAIN}
@@ -29,10 +27,3 @@ services:
       - {key: GROQ_MODEL, value: llama-3.3-70b-versatile}
       - {key: GROQ_VISION_MODEL, value: qwen/qwen3.6-27b}
       - {key: CORS_ALLOWED_ORIGINS, value: "https://*.vercel.app"}
-
-databases:
-  - name: wattflex-db
-    plan: free
-    region: frankfurt
-    databaseName: wattflex
-    user: wattflex
