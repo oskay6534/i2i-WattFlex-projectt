@@ -4,8 +4,11 @@ set -eu
 # Render supplies postgresql://user:password@host/database, while the JDBC
 # driver expects credentials separately and a jdbc:postgresql:// URL.
 # Local Docker Compose continues to provide DB_URL directly.
-if [ -z "${DB_URL:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
+# A Blueprint-managed DATABASE_URL is authoritative. This avoids relying on
+# manually copied credentials, which can become stale after a database reset.
+if [ -n "${DATABASE_URL:-}" ]; then
   render_db="${DATABASE_URL#postgresql://}"
+  render_credentials="${render_db%@*}"
   render_host_path="${render_db#*@}"
   render_host="${render_host_path%%/*}"
   render_database="${render_host_path#*/}"
@@ -16,6 +19,8 @@ if [ -z "${DB_URL:-}" ] && [ -n "${DATABASE_URL:-}" ]; then
   esac
 
   export DB_URL="jdbc:postgresql://${render_host}/${render_database}"
+  export DB_USER="${render_credentials%%:*}"
+  export DB_PASSWORD="${render_credentials#*:}"
 fi
 
 if [ -n "${KAFKA_DISCOVERY_HOST:-}" ]; then

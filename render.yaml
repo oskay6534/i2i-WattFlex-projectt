@@ -7,6 +7,10 @@ services:
     dockerfilePath: ./voltwise-core/Dockerfile
     autoDeployTrigger: commit
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wattflex-db
+          property: connectionString
       - {key: DB_URL, sync: false}
       - {key: DB_USER, sync: false}
       - {key: DB_PASSWORD, sync: false}
@@ -25,3 +29,10 @@ services:
       - {key: GROQ_MODEL, value: llama-3.3-70b-versatile}
       - {key: GROQ_VISION_MODEL, value: qwen/qwen3.6-27b}
       - {key: CORS_ALLOWED_ORIGINS, value: "https://*.vercel.app"}
+
+databases:
+  - name: wattflex-db
+    plan: free
+    region: frankfurt
+    databaseName: wattflex
+    user: wattflex
